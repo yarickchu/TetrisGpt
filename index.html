@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101426">
+  <title>BLOCKFALL — Тетрис</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101426; --bg-glow: #28315a; --panel: rgba(25, 32, 57, .88);
+      --line: rgba(255,255,255,.1); --muted: #9ba6c7; --text: #f4f6ff;
+      --accent: #8b7cff; --accent2: #6558d9; --button-bg: #303957;
+      --board: #0a0e1c; --gridline: rgba(255,255,255,.045);
+      --panel-shadow: 0 18px 50px rgba(0,0,0,.25);
+    }
+    body[data-theme="neon"] {
+      --bg:#080916; --bg-glow:#24205b; --panel:rgba(20,18,48,.93);
+      --line:rgba(77,245,255,.2); --muted:#a4a2d8; --text:#f4f2ff;
+      --accent:#45f3ef; --accent2:#8b42ff; --button-bg:#29204f;
+      --board:#070817; --gridline:rgba(69,243,239,.09);
+      --panel-shadow:0 0 28px rgba(91,64,255,.17);
+    }
+    body[data-theme="retro"] {
+      --bg:#241a18; --bg-glow:#59402e; --panel:rgba(58,43,34,.96);
+      --line:rgba(255,220,160,.2); --muted:#d0b995; --text:#fff0d1;
+      --accent:#ffca70; --accent2:#c46a42; --button-bg:#624633;
+      --board:#1c1715; --gridline:rgba(255,220,160,.08);
+      --panel-shadow:0 8px 0 rgba(0,0,0,.22);
+    }
+    body[data-theme="forest"] {
+      --bg:#10231e; --bg-glow:#245044; --panel:rgba(24,53,43,.94);
+      --line:rgba(171,231,174,.17); --muted:#a8c9b1; --text:#effff1;
+      --accent:#9be28f; --accent2:#438e65; --button-bg:#315b4a;
+      --board:#0b1915; --gridline:rgba(171,231,174,.07);
+      --panel-shadow:0 18px 50px rgba(0,0,0,.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding: 22px 14px 32px;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-glow) 0%, var(--bg) 62%);
+      color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      display: flex; justify-content: center;
+    }
+    .app { width: min(960px, 100%); }
+    header { text-align: center; margin: 5px 0 22px; }
+    .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .28em; font-weight: 800; }
+    h1 { margin: 5px 0 4px; font-size: clamp(30px, 6vw, 48px); letter-spacing: .08em; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 16px; align-items: start; }
+    .game-card, .side-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+      box-shadow: var(--panel-shadow); backdrop-filter: blur(12px);
+    }
+    .game-card { padding: 14px; }
+    .game-top { display:flex; justify-content:space-between; align-items:center; margin: 0 2px 12px; }
+    .status { color: var(--muted); font-size: 12px; }
+    .status strong { color: var(--accent); }
+    .board-wrap { position:relative; width:100%; max-width:360px; margin:auto; }
+    canvas { display:block; width:100%; height:auto; border-radius: 10px; }
+    #board { background:var(--board); border:1px solid var(--line); }
+    .overlay {
+      position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:12px; background:rgba(7,10,22,.78); border-radius:10px; text-align:center; padding:20px;
+    }
+    .overlay.hidden { display:none; }
+    .overlay h2 { margin:0; font-size:27px; }
+    .overlay p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+    button {
+      border:0; border-radius:12px; padding:11px 15px; color:white; font-weight:750;
+      background:linear-gradient(135deg,var(--accent),var(--accent2)); cursor:pointer;
+      transition:transform .12s, filter .12s; touch-action: manipulation;
+    }
+    button:hover { filter:brightness(1.12); }
+    button:active { transform:scale(.96); }
+    button.secondary { background:var(--button-bg); border:1px solid var(--line); }
+    .side { display:grid; gap:12px; }
+    .side-card { padding:15px; }
+    .label { color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
+    .score { font-size:30px; font-weight:850; margin-top:4px; font-variant-numeric:tabular-nums; }
+    .stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .stat-value { font-size:21px; font-weight:800; margin-top:4px; }
+    #next, #hold { width:100%; max-width:150px; margin:10px auto 0; background:var(--board); border:1px solid var(--line); border-radius:10px; }
+    .side-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .help { color:var(--muted); font-size:12px; line-height:1.65; }
+    .help b { color:#e4e7ff; }
+    .mobile-controls { display:none; max-width:360px; margin:14px auto 0; gap:8px; grid-template-columns:repeat(4,1fr); }
+    .mobile-controls button { min-height:48px; padding:8px 4px; font-size:17px; background:var(--button-bg); }
+    .mobile-controls .wide { grid-column:span 2; font-size:13px; }
+    .theme-select {
+      background:var(--button-bg); color:var(--text); border:1px solid var(--line);
+      border-radius:10px; padding:9px 11px; font:inherit; font-size:12px; max-width:155px;
+    }
+    .mini-label { color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    .mascot-row { display:flex; align-items:center; gap:12px; margin-top:9px; }
+    #mascot { width:76px; height:76px; image-rendering:pixelated; background:var(--board); border-radius:12px; }
+    #mascot.cheer { animation: mascot-cheer .48s ease-in-out 2; }
+    @keyframes mascot-cheer { 0%,100% { transform:translateY(0) rotate(0); } 35% { transform:translateY(-9px) rotate(-7deg); } 70% { transform:translateY(-3px) rotate(7deg); } }
+    #mascotText { color:var(--text); font-size:12px; line-height:1.45; }
+    .hold-used { opacity:.55; }
+    footer { text-align:center; color:var(--muted); font-size:11px; margin-top:18px; }
+    @media (max-width:650px) {
+      body { padding:14px 10px 24px; }
+      header { margin-bottom:15px; }
+      .layout { grid-template-columns:1fr; max-width:430px; margin:auto; }
+      .side { grid-template-columns:1fr 1fr; }
+      .side-card { padding:12px; }
+      .score { font-size:25px; }
+      .help-card { grid-column:1/-1; }
+      .mobile-controls { display:grid; }
+      .game-card { padding:10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="eyebrow">ARCADE CLASSIC</div>
+      <h1>BLOCKFALL</h1>
+      <p>Собирай линии. Не дай блокам добраться до верха.</p>
+      <div style="margin-top:12px">
+        <label class="mini-label" for="themeSelect">Тема: </label>
+        <select class="theme-select" id="themeSelect">
+          <option value="classic">Классическая</option>
+          <option value="neon">Неон</option>
+          <option value="retro">Ретро</option>
+          <option value="forest">Лесная</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="game-card">
+        <div class="game-top">
+          <span class="status">РЕЖИМ: <strong>КЛАССИКА</strong></span>
+          <span class="status" id="gameStatus">ГОТОВ К ИГРЕ</span>
+        </div>
+        <div class="board-wrap">
+          <canvas id="board" width="300" height="600" aria-label="Игровое поле тетриса"></canvas>
+          <div class="overlay" id="overlay">
+            <h2 id="overlayTitle">BLOCKFALL</h2>
+            <p id="overlayText">Нажми «Начать игру», чтобы запустить партию.</p>
+            <button id="startBtn">Начать игру</button>
+          </div>
+        </div>
+        <div class="mobile-controls" aria-label="Сенсорное управление">
+          <button data-action="left" aria-label="Влево">←</button>
+          <button data-action="rotate" aria-label="Повернуть">↻</button>
+          <button data-action="right" aria-label="Вправо">→</button>
+          <button data-action="drop" aria-label="Сбросить вниз">⇊</button>
+          <button class="wide" data-action="down">Вниз</button>
+          <button class="wide" data-action="hold">HOLD</button>
+          <button class="wide" data-action="pause">Пауза</button>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="side-card">
+          <div class="label">Счёт</div>
+          <div class="score" id="score">0</div>
+        </div>
+        <div class="side-card">
+          <div class="stats">
+            <div><div class="label">Рекорд</div><div class="stat-value" id="best">0</div></div>
+            <div><div class="label">Уровень</div><div class="stat-value" id="level">1</div></div>
+            <div><div class="label">Линии</div><div class="stat-value" id="lines">0</div></div>
+            <div><div class="label">Скорость</div><div class="stat-value" id="speed">1×</div></div>
+          </div>
+        </div>
+        <div class="side-card" id="holdCard">
+          <div class="label">HOLD · Удержание</div>
+          <canvas id="hold" width="150" height="120"></canvas>
+          <div class="mini-label" id="holdHint">Нажми C, чтобы сохранить</div>
+          <button id="holdBtn" class="secondary" style="width:100%;margin-top:10px">Удержать · C</button>
+        </div>
+        <div class="side-card">
+          <div class="label">Следующая фигура</div>
+          <canvas id="next" width="150" height="120"></canvas>
+          <div class="side-actions">
+            <button id="pauseBtn" class="secondary">Пауза</button>
+            <button id="restartBtn" class="secondary">Заново</button>
+          </div>
+        </div>
+        <div class="side-card">
+          <div class="label">Твой напарник</div>
+          <div class="mascot-row">
+            <canvas id="mascot" width="12" height="12" aria-label="Пиксельный робот"></canvas>
+            <div id="mascotText">Я готов! Давай соберём линии :)</div>
+          </div>
+        </div>
+        <div class="side-card help-card">
+          <div class="label">Управление</div>
+          <p class="help">
+            <b>← →</b> — двигать<br>
+            <b>↑ / X</b> — повернуть<br>
+            <b>↓</b> — ускорить падение<br>
+            <b>Пробел</b> — мгновенно вниз<br>
+            <b>P / Esc</b> — пауза
+          </p>
+        </div>
+      </aside>
+    </section>
+    <footer>BLOCKFALL · Сделано для игры в браузере</footer>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+  const COLS = 10, ROWS = 20, SIZE = 30;
+  const COLORS = {
+    I: "#39d9e6", O: "#f4d35e", T: "#b18cff", S: "#62df9b",
+    Z: "#ff6b83", J: "#6b9cff", L: "#ffad66"
+  };
+  const SHAPES = {
+    I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    O: [[1,1],[1,1]],
+    T: [[0,1,0],[1,1,1],[0,0,0]],
+    S: [[0,1,1],[1,1,0],[0,0,0]],
+    Z: [[1,1,0],[0,1,1],[0,0,0]],
+    J: [[1,0,0],[1,1,1],[0,0,0]],
+    L: [[0,0,1],[1,1,1],[0,0,0]]
+  };
+  const boardCanvas = document.getElementById("board");
+  const ctx = boardCanvas.getContext("2d");
+  const nextCanvas = document.getElementById("next");
+  const nctx = nextCanvas.getContext("2d");
+  const holdCanvas = document.getElementById("hold");
+  const hctx = holdCanvas.getContext("2d");
+  const mascotCanvas = document.getElementById("mascot");
+  const mctx = mascotCanvas.getContext("2d");
+  const $ = id => document.getElementById(id);
+
+  let board, piece, nextType, bag = [], score = 0, lines = 0, level = 1;
+  let running = false, paused = false, gameOver = false;
+  let heldType = null, holdUsed = false;
+  let lastTime = 0, dropCounter = 0, animationId = 0;
+  let best = Number(localStorage.getItem("blockfall-best") || 0);
+  $("best").textContent = best;
+
+  function refillBag() {
+    bag = Object.keys(SHAPES);
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+  }
+  function randomType() {
+    if (!bag.length) refillBag();
+    return bag.pop();
+  }
+  function makePiece(type) {
+    const matrix = SHAPES[type].map(row => row.slice());
+    return { type, matrix, x: Math.floor((COLS - matrix[0].length) / 2), y: -1 };
+  }
+  function reset() {
+    board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+    score = 0; lines = 0; level = 1; bag = [];
+    heldType = null; holdUsed = false;
+    piece = makePiece(randomType());
+    nextType = randomType();
+    running = true; paused = false; gameOver = false;
+    dropCounter = 0; lastTime = 0;
+    updateUI(); drawNext(); drawHold(); updateHoldUI(); setMascot("ready", "Я готов! Давай соберём линии :)"); hideOverlay();
+    $("gameStatus").textContent = "ИГРА ИДЁТ";
+    if (animationId) cancelAnimationFrame(animationId);
+    animationId = requestAnimationFrame(loop);
+  }
+  function updateUI() {
+    $("score").textContent = score.toLocaleString("ru-RU");
+    $("lines").textContent = lines;
+    $("level").textContent = level;
+    $("speed").textContent = level + "×";
+    if (score > best) {
+      best = score;
+      localStorage.setItem("blockfall-best", String(best));
+      $("best").textContent = best.toLocaleString("ru-RU");
+    }
+  }
+  function drawCell(context, x, y, color, size = SIZE, alpha = 1) {
+    context.globalAlpha = alpha;
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.fillStyle = "rgba(255,255,255,.18)";
+    context.fillRect(x * size + 3, y * size + 3, size - 6, 3);
+    context.strokeStyle = "rgba(0,0,0,.25)";
+    context.strokeRect(x * size + 1.5, y * size + 1.5, size - 3, size - 3);
+    context.globalAlpha = 1;
+  }
+  function drawMascot(mood = "ready") {
+    // 12x12 пиксельный робот: цветные квадраты намеренно рисуются без сглаживания.
+    const pixels = [
+      "....BBBB....",
+      "...BWWWWB...",
+      "..BWWWWWWB..",
+      "..BWWWWWWB..",
+      "..BWBWWBWB..",
+      "..BWWWWWWB..",
+      "...BWWWWB...",
+      "....BBBB....",
+      "...G....G...",
+      "..GG....GG..",
+      "..G......G..",
+      "............"
+    ];
+    const palette = {B: mood === "happy" ? "#ffd166" : "#8b7cff", W:"#eaf3ff", G:"#62df9b"};
+    mctx.clearRect(0,0,12,12);
+    pixels.forEach((row,y) => [...row].forEach((ch,x) => {
+      if (palette[ch]) { mctx.fillStyle = palette[ch]; mctx.fillRect(x,y,1,1); }
+    }));
+    if (mood === "happy") {
+      mctx.fillStyle = "#ff8fab";
+      mctx.fillRect(1,3,1,1); mctx.fillRect(10,3,1,1);
+      mctx.fillStyle = "#ffffff";
+      mctx.fillRect(5,7,2,1);
+    }
+  }
+  function setMascot(mood, message) {
+    drawMascot(mood);
+    $("mascotText").textContent = message;
+    mascotCanvas.classList.remove("cheer");
+    if (mood === "happy") {
+      void mascotCanvas.offsetWidth;
+      mascotCanvas.classList.add("cheer");
+    }
+  }
+  function drawBoard() {
+    ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--board").trim() || "#0a0e1c";
+    ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--gridline").trim() || "rgba(255,255,255,.045)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= COLS; x++) {
+      ctx.beginPath(); ctx.moveTo(x * SIZE + .5, 0); ctx.lineTo(x * SIZE + .5, ROWS * SIZE); ctx.stroke();
+    }
+    for (let y = 0; y <= ROWS; y++) {
+      ctx.beginPath(); ctx.moveTo(0, y * SIZE + .5); ctx.lineTo(COLS * SIZE, y * SIZE + .5); ctx.stroke();
+    }
+    board.forEach((row, y) => row.forEach((cell, x) => {
+      if (cell) drawCell(ctx, x, y, COLORS[cell]);
+    }));
+    if (piece) {
+      const ghostY = getGhostY();
+      piece.matrix.forEach((row, y) => row.forEach((v, x) => {
+        if (v && ghostY + y >= 0) drawCell(ctx, piece.x + x, ghostY + y, COLORS[piece.type], SIZE, .19);
+      }));
+      piece.matrix.forEach((row, y) => row.forEach((v, x) => {
+        if (v && piece.y + y >= 0) drawCell(ctx, piece.x + x, piece.y + y, COLORS[piece.type]);
+      }));
+    }
+  }
+  function drawPreview(context, type) {
+    context.clearRect(0, 0, 150, 120);
+    context.fillStyle = getComputedStyle(document.body).getPropertyValue("--board").trim() || "#0a0e1c";
+    context.fillRect(0, 0, 150, 120);
+    if (!type) {
+      context.fillStyle = "#8790ad"; context.font = "12px system-ui";
+      context.textAlign = "center"; context.fillText("Пусто", 75, 64); return;
+    }
+    const matrix = SHAPES[type], cell = 25;
+    const w = matrix[0].length * cell, h = matrix.length * cell;
+    const ox = (150 - w) / 2, oy = (120 - h) / 2;
+    matrix.forEach((row,y) => row.forEach((v,x) => {
+      if (!v) return;
+      context.fillStyle = COLORS[type];
+      context.fillRect(ox + x*cell + 1, oy + y*cell + 1, cell - 2, cell - 2);
+      context.fillStyle = "rgba(255,255,255,.18)";
+      context.fillRect(ox + x*cell + 3, oy + y*cell + 3, cell - 6, 3);
+    }));
+  }
+  function drawNext() { drawPreview(nctx, nextType); }
+  function drawHold() { drawPreview(hctx, heldType); }
+  function updateHoldUI() {
+    $("holdHint").textContent = holdUsed ? "Уже использовано до фиксации" : "Нажми C, чтобы сохранить";
+    $("holdCard").classList.toggle("hold-used", holdUsed);
+  }
+  function holdPiece() {
+    if (!running || paused || gameOver || holdUsed) return;
+    const current = piece.type;
+    if (heldType === null) {
+      heldType = current;
+      piece = makePiece(nextType);
+      nextType = randomType();
+      drawNext();
+    } else {
+      const swap = heldType;
+      heldType = current;
+      piece = makePiece(swap);
+    }
+    holdUsed = true;
+    drawHold(); updateHoldUI(); drawBoard();
+    setMascot("happy", "Хороший запасной план!");
+    if (collides(piece.matrix, piece.x, piece.y)) endGame();
+  }
+  function collides(matrix, px, py) {
+    for (let y = 0; y < matrix.length; y++) for (let x = 0; x < matrix[y].length; x++) {
+      if (!matrix[y][x]) continue;
+      const bx = px + x, by = py + y;
+      if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+      if (by >= 0 && board[by][bx]) return true;
+    }
+    return false;
+  }
+  function getGhostY() {
+    let y = piece.y;
+    while (!collides(piece.matrix, piece.x, y + 1)) y++;
+    return y;
+  }
+  function move(dx, dy) {
+    if (!running || paused || gameOver) return false;
+    if (!collides(piece.matrix, piece.x + dx, piece.y + dy)) {
+      piece.x += dx; piece.y += dy; return true;
+    }
+    return false;
+  }
+  function rotateMatrix(matrix) {
+    return matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
+  }
+  function rotate() {
+    if (!running || paused || gameOver) return;
+    const rotated = rotateMatrix(piece.matrix);
+    for (const offset of [0, -1, 1, -2, 2]) {
+      if (!collides(rotated, piece.x + offset, piece.y)) {
+        piece.matrix = rotated; piece.x += offset; return;
+      }
+    }
+  }
+  function lockPiece() {
+    piece.matrix.forEach((row,y) => row.forEach((v,x) => {
+      if (v) {
+        const by = piece.y + y, bx = piece.x + x;
+        if (by < 0) { endGame(); return; }
+        board[by][bx] = piece.type;
+      }
+    }));
+    if (gameOver) return;
+    clearLines();
+    holdUsed = false; updateHoldUI();
+    piece = makePiece(nextType);
+    nextType = randomType();
+    drawNext();
+    if (collides(piece.matrix, piece.x, piece.y)) endGame();
+  }
+  function clearLines() {
+    let cleared = 0;
+    outer: for (let y = ROWS - 1; y >= 0; y--) {
+      for (let x = 0; x < COLS; x++) if (!board[y][x]) continue outer;
+      board.splice(y, 1);
+      board.unshift(Array(COLS).fill(null));
+      cleared++; y++;
+    }
+    if (cleared) {
+      const points = [0, 100, 300, 500, 800];
+      score += points[cleared] * level;
+      lines += cleared;
+      level = Math.floor(lines / 10) + 1;
+      updateUI();
+      const cheers = ["Линия! Отлично!", "Вот это комбинация!", "Красиво сыграно!", "Уиии! Так держать!"];
+      setMascot("happy", cleared === 4 ? "ТЕТРАС! НЕВЕРОЯТНО!!!" : cheers[Math.floor(Math.random() * cheers.length)]);
+    }
+  }
+  function softDrop() {
+    if (move(0, 1)) { score += 1; updateUI(); }
+    else lockPiece();
+    dropCounter = 0;
+  }
+  function hardDrop() {
+    if (!running || paused || gameOver) return;
+    let distance = 0;
+    while (move(0, 1)) distance++;
+    score += distance * 2; updateUI(); lockPiece();
+  }
+  function endGame() {
+    gameOver = true; running = false;
+    $("gameStatus").textContent = "ИГРА ОКОНЧЕНА";
+    showOverlay("Игра окончена", `Твой счёт: ${score.toLocaleString("ru-RU")}. Попробуем ещё раз?`, "Играть снова");
+  }
+  function showOverlay(title, message, buttonText) {
+    $("overlayTitle").textContent = title;
+    $("overlayText").textContent = message;
+    $("startBtn").textContent = buttonText;
+    $("overlay").classList.remove("hidden");
+  }
+  function hideOverlay() { $("overlay").classList.add("hidden"); }
+  function togglePause() {
+    if (!running || gameOver) return;
+    paused = !paused;
+    if (paused) {
+      $("gameStatus").textContent = "ПАУЗА";
+      showOverlay("Пауза", "Передохни. Игра продолжится с того же места.", "Продолжить");
+    } else {
+      $("gameStatus").textContent = "ИГРА ИДЁТ";
+      hideOverlay(); lastTime = 0;
+    }
+  }
+  function loop(time = 0) {
+    if (!running) { drawBoard(); return; }
+    if (!paused) {
+      const delta = lastTime ? time - lastTime : 0;
+      lastTime = time;
+      dropCounter += delta;
+      const interval = Math.max(90, 850 - (level - 1) * 65);
+      if (dropCounter > interval) {
+        if (!move(0, 1)) lockPiece();
+        dropCounter = 0;
+      }
+      drawBoard();
+    }
+    animationId = requestAnimationFrame(loop);
+  }
+  function action(name) {
+    if (name === "pause") return togglePause();
+    if (name === "hold") return holdPiece();
+    if (!running || paused || gameOver) return;
+    if (name === "left") move(-1,0);
+    if (name === "right") move(1,0);
+    if (name === "down") softDrop();
+    if (name === "rotate") rotate();
+    if (name === "drop") hardDrop();
+    drawBoard();
+  }
+  document.addEventListener("keydown", e => {
+    const keys = ["ArrowLeft","ArrowRight","ArrowDown","ArrowUp"," ","x","X","p","P","Escape","c","C","Shift"];
+    if (keys.includes(e.key)) e.preventDefault();
+    if (e.repeat && e.key !== "ArrowDown") return;
+    if (e.key === "ArrowLeft") action("left");
+    else if (e.key === "ArrowRight") action("right");
+    else if (e.key === "ArrowDown") action("down");
+    else if (["ArrowUp","x","X"].includes(e.key)) action("rotate");
+    else if (e.key === " ") action("drop");
+    else if (["p","P","Escape"].includes(e.key)) action("pause");
+    else if (["c","C","Shift"].includes(e.key)) action("hold");
+  });
+  document.querySelectorAll("[data-action]").forEach(button => {
+    const name = button.dataset.action;
+    button.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      action(name);
+    });
+  });
+  $("startBtn").addEventListener("click", () => {
+    if (paused && !gameOver) togglePause();
+    else reset();
+  });
+  $("pauseBtn").addEventListener("click", togglePause);
+  $("restartBtn").addEventListener("click", reset);
+  $("holdBtn").addEventListener("click", holdPiece);
+  $("themeSelect").addEventListener("change", e => {
+    document.body.dataset.theme = e.target.value;
+    drawNext(); drawHold(); drawBoard();
+  });
+
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  piece = null; nextType = randomType();
+  drawBoard(); drawNext(); drawHold(); drawMascot("ready");
+  $("best").textContent = best.toLocaleString("ru-RU");
+})();
+</script>
+</body>
+</html>
