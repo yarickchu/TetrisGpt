@@ -28,6 +28,13 @@
       --board:#1c1715; --gridline:rgba(255,220,160,.08);
       --panel-shadow:0 8px 0 rgba(0,0,0,.22);
     }
+    body[data-theme="sunset"] {
+      --bg:#38204f; --bg-glow:#f08b68; --panel:rgba(70,38,77,.92);
+      --line:rgba(255,205,153,.25); --muted:#f0c5b2; --text:#fff4e8;
+      --accent:#ffd18a; --accent2:#e36f72; --button-bg:#58335f;
+      --board:#130d20; --gridline:rgba(255,200,150,.08);
+      --panel-shadow:0 18px 50px rgba(0,0,0,.28);
+    }
     body[data-theme="forest"] {
       --bg:#10231e; --bg-glow:#245044; --panel:rgba(24,53,43,.94);
       --line:rgba(171,231,174,.17); --muted:#a8c9b1; --text:#effff1;
@@ -100,15 +107,42 @@
     .hold-used { opacity:.55; }
     footer { text-align:center; color:var(--muted); font-size:11px; margin-top:18px; }
     @media (max-width:650px) {
-      body { padding:14px 10px 24px; }
-      header { margin-bottom:15px; }
-      .layout { grid-template-columns:1fr; max-width:430px; margin:auto; }
-      .side { grid-template-columns:1fr 1fr; }
-      .side-card { padding:12px; }
-      .score { font-size:25px; }
-      .help-card { grid-column:1/-1; }
-      .mobile-controls { display:grid; }
-      .game-card { padding:10px; }
+      body { padding:10px 9px 18px; }
+      .app { width:100%; max-width:520px; }
+      header { margin:0 0 10px; }
+      h1 { font-size:clamp(25px, 7vw, 36px); }
+      header p { font-size:11px; }
+      .layout { grid-template-columns:minmax(0,1.42fr) minmax(0,.88fr); gap:8px; max-width:100%; margin:auto; align-items:stretch; }
+      .game-card { padding:7px; min-width:0; }
+      .game-top { margin:0 1px 6px; }
+      .status { font-size:8px; }
+      .board-wrap { max-width:100%; }
+      #board { width:100%; height:auto; }
+      .side { display:flex; flex-direction:column; gap:7px; min-width:0; }
+      .side-card { padding:8px; border-radius:12px; }
+      .label { font-size:8px; letter-spacing:.1em; }
+      .score { font-size:20px; margin-top:1px; }
+      .stats { gap:6px; }
+      .stat-value { font-size:15px; margin-top:1px; }
+      #next, #hold { max-width:100%; margin:4px auto 0; height:auto; }
+      .side-actions { gap:5px; margin-top:6px; }
+      .side-actions button { padding:7px 3px; font-size:10px; }
+      .mini-label { font-size:8px; letter-spacing:.04em; }
+      .mascot-row { gap:5px; margin-top:5px; flex-direction:column; }
+      #mascot { width:48px; height:48px; }
+      #mascotText { font-size:9px; text-align:center; }
+      .help-card { display:none; }
+      .mobile-controls { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; max-width:100%; margin:8px auto 0; }
+      .mobile-controls button { min-height:43px; padding:6px 2px; font-size:15px; }
+      .mobile-controls button:nth-child(n+4):nth-child(-n+6) { font-size:11px; }
+      .mobile-controls button:nth-child(7) { grid-column:span 6; min-height:35px; font-size:11px; }
+      footer { margin-top:10px; font-size:9px; }
+    }
+    @media (max-width:360px) {
+      .layout { grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr); gap:6px; }
+      .side-card { padding:6px; }
+      .mobile-controls { gap:4px; }
+      .mobile-controls button { min-height:39px; }
     }
   </style>
 </head>
@@ -124,6 +158,7 @@
           <option value="classic">Классическая</option>
           <option value="neon">Неон</option>
           <option value="retro">Ретро</option>
+          <option value="sunset">Закат</option>
           <option value="forest">Лесная</option>
         </select>
       </div>
@@ -142,15 +177,6 @@
             <p id="overlayText">Нажми «Начать игру», чтобы запустить партию.</p>
             <button id="startBtn">Начать игру</button>
           </div>
-        </div>
-        <div class="mobile-controls" aria-label="Сенсорное управление">
-          <button data-action="left" aria-label="Влево">←</button>
-          <button data-action="rotate" aria-label="Повернуть">↻</button>
-          <button data-action="right" aria-label="Вправо">→</button>
-          <button data-action="drop" aria-label="Сбросить вниз">⇊</button>
-          <button class="wide" data-action="down">Вниз</button>
-          <button class="wide" data-action="hold">HOLD</button>
-          <button class="wide" data-action="pause">Пауза</button>
         </div>
       </div>
 
@@ -200,6 +226,15 @@
         </div>
       </aside>
     </section>
+    <div class="mobile-controls" aria-label="Сенсорное управление">
+      <button data-action="left" aria-label="Влево">←</button>
+      <button data-action="rotate" aria-label="Повернуть">↻</button>
+      <button data-action="right" aria-label="Вправо">→</button>
+      <button data-action="down">Вниз</button>
+      <button data-action="drop">Сброс</button>
+      <button data-action="hold">HOLD</button>
+      <button data-action="pause">Пауза</button>
+    </div>
     <footer>BLOCKFALL · Сделано для игры в браузере</footer>
   </main>
 
@@ -211,6 +246,15 @@
     I: "#39d9e6", O: "#f4d35e", T: "#b18cff", S: "#62df9b",
     Z: "#ff6b83", J: "#6b9cff", L: "#ffad66"
   };
+  const PALETTES = {
+    classic: {I:"#39d9e6", O:"#f4d35e", T:"#b18cff", S:"#62df9b", Z:"#ff6b83", J:"#6b9cff", L:"#ffad66"},
+    neon: {I:"#20f5ff", O:"#fff34d", T:"#e34dff", S:"#43ff9b", Z:"#ff3d83", J:"#4c83ff", L:"#ff9b35"},
+    retro: {I:"#55c7c0", O:"#f4c95d", T:"#b58ad9", S:"#8fbd65", Z:"#d96b62", J:"#6f8fc7", L:"#e99b57"},
+    forest: {I:"#66d9c2", O:"#e6cf72", T:"#b6a0dc", S:"#8bcf79", Z:"#df7b75", J:"#78a7c9", L:"#dca16b"},
+    sunset: {I:"#65d7e8", O:"#ffd27d", T:"#c89be8", S:"#91d69b", Z:"#f07883", J:"#829ce8", L:"#ffad75"}
+  };
+  function currentPalette() { return PALETTES[document.body.dataset.theme] || PALETTES.classic; }
+  function blockColor(type) { return currentPalette()[type]; }
   const SHAPES = {
     I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
     O: [[1,1],[1,1]],
@@ -277,76 +321,43 @@
     }
   }
   function drawCell(context, x, y, color, size = SIZE, alpha = 1) {
-    context.globalAlpha = alpha;
-    context.fillStyle = color;
-    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-    context.fillStyle = "rgba(255,255,255,.18)";
-    context.fillRect(x * size + 3, y * size + 3, size - 6, 3);
-    context.strokeStyle = "rgba(0,0,0,.25)";
-    context.strokeRect(x * size + 1.5, y * size + 1.5, size - 3, size - 3);
-    context.globalAlpha = 1;
-  }
-  function drawMascot(mood = "ready") {
-    // 12x12 пиксельный робот: цветные квадраты намеренно рисуются без сглаживания.
-    const pixels = [
-      "....BBBB....",
-      "...BWWWWB...",
-      "..BWWWWWWB..",
-      "..BWWWWWWB..",
-      "..BWBWWBWB..",
-      "..BWWWWWWB..",
-      "...BWWWWB...",
-      "....BBBB....",
-      "...G....G...",
-      "..GG....GG..",
-      "..G......G..",
-      "............"
-    ];
-    const palette = {B: mood === "happy" ? "#ffd166" : "#8b7cff", W:"#eaf3ff", G:"#62df9b"};
-    mctx.clearRect(0,0,12,12);
-    pixels.forEach((row,y) => [...row].forEach((ch,x) => {
-      if (palette[ch]) { mctx.fillStyle = palette[ch]; mctx.fillRect(x,y,1,1); }
-    }));
-    if (mood === "happy") {
-      mctx.fillStyle = "#ff8fab";
-      mctx.fillRect(1,3,1,1); mctx.fillRect(10,3,1,1);
-      mctx.fillStyle = "#ffffff";
-      mctx.fillRect(5,7,2,1);
+    const theme = document.body.dataset.theme || "classic";
+    const px = x * size, py = y * size;
+    context.save(); context.globalAlpha = alpha;
+    if (theme === "neon") {
+      context.shadowColor=color; context.shadowBlur=9; context.fillStyle=color;
+      context.fillRect(px+3,py+3,size-6,size-6); context.shadowBlur=0;
+      context.strokeStyle="#ffffff"; context.lineWidth=1.2;
+      context.strokeRect(px+4,py+4,size-8,size-8);
+      context.fillStyle="rgba(255,255,255,.35)"; context.fillRect(px+6,py+6,size-12,2);
+    } else if (theme === "retro") {
+      context.fillStyle=color; context.fillRect(px+1,py+1,size-2,size-2);
+      context.fillStyle="rgba(255,255,255,.28)"; context.fillRect(px+2,py+2,size-4,4);
+      context.fillStyle="rgba(0,0,0,.24)"; context.fillRect(px+2,py+size-5,size-4,3);
+      context.fillRect(px+size-5,py+2,3,size-4);
+      context.strokeStyle="rgba(30,20,15,.8)"; context.strokeRect(px+1.5,py+1.5,size-3,size-3);
+    } else if (theme === "sunset") {
+      const grad=context.createLinearGradient(px,py,px+size,py+size);
+      grad.addColorStop(0,"#fff0c2"); grad.addColorStop(.24,color); grad.addColorStop(1,"#a94470");
+      context.fillStyle=grad; context.fillRect(px+1,py+1,size-2,size-2);
+      context.fillStyle="rgba(255,235,190,.35)";
+      context.fillRect(px+3,py+3,size-6,3);
+      context.strokeStyle="rgba(75,28,67,.7)"; context.strokeRect(px+1.5,py+1.5,size-3,size-3);
+    } else if (theme === "forest") {
+      const grad=context.createLinearGradient(px,py,px+size,py+size);
+      grad.addColorStop(0,"#f3ffd9"); grad.addColorStop(.2,color); grad.addColorStop(1,"#244b3b");
+      context.fillStyle=grad; context.fillRect(px+1,py+1,size-2,size-2);
+      context.fillStyle="rgba(235,255,205,.4)";
+      context.beginPath(); context.arc(px+size*.34,py+size*.34,size*.12,0,Math.PI*2); context.fill();
+      context.strokeStyle="rgba(9,39,28,.7)"; context.strokeRect(px+1.5,py+1.5,size-3,size-3);
+    } else {
+      const grad=context.createLinearGradient(px,py,px+size,py+size);
+      grad.addColorStop(0,"#ffffff"); grad.addColorStop(.18,color); grad.addColorStop(1,"#26304c");
+      context.fillStyle=grad; context.fillRect(px+1,py+1,size-2,size-2);
+      context.fillStyle="rgba(255,255,255,.25)"; context.fillRect(px+3,py+3,size-6,3);
+      context.strokeStyle="rgba(0,0,0,.3)"; context.strokeRect(px+1.5,py+1.5,size-3,size-3);
     }
-  }
-  function setMascot(mood, message) {
-    drawMascot(mood);
-    $("mascotText").textContent = message;
-    mascotCanvas.classList.remove("cheer");
-    if (mood === "happy") {
-      void mascotCanvas.offsetWidth;
-      mascotCanvas.classList.add("cheer");
-    }
-  }
-  function drawBoard() {
-    ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--board").trim() || "#0a0e1c";
-    ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--gridline").trim() || "rgba(255,255,255,.045)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= COLS; x++) {
-      ctx.beginPath(); ctx.moveTo(x * SIZE + .5, 0); ctx.lineTo(x * SIZE + .5, ROWS * SIZE); ctx.stroke();
-    }
-    for (let y = 0; y <= ROWS; y++) {
-      ctx.beginPath(); ctx.moveTo(0, y * SIZE + .5); ctx.lineTo(COLS * SIZE, y * SIZE + .5); ctx.stroke();
-    }
-    board.forEach((row, y) => row.forEach((cell, x) => {
-      if (cell) drawCell(ctx, x, y, COLORS[cell]);
-    }));
-    if (piece) {
-      const ghostY = getGhostY();
-      piece.matrix.forEach((row, y) => row.forEach((v, x) => {
-        if (v && ghostY + y >= 0) drawCell(ctx, piece.x + x, ghostY + y, COLORS[piece.type], SIZE, .19);
-      }));
-      piece.matrix.forEach((row, y) => row.forEach((v, x) => {
-        if (v && piece.y + y >= 0) drawCell(ctx, piece.x + x, piece.y + y, COLORS[piece.type]);
-      }));
-    }
+    context.restore();
   }
   function drawPreview(context, type) {
     context.clearRect(0, 0, 150, 120);
@@ -361,10 +372,7 @@
     const ox = (150 - w) / 2, oy = (120 - h) / 2;
     matrix.forEach((row,y) => row.forEach((v,x) => {
       if (!v) return;
-      context.fillStyle = COLORS[type];
-      context.fillRect(ox + x*cell + 1, oy + y*cell + 1, cell - 2, cell - 2);
-      context.fillStyle = "rgba(255,255,255,.18)";
-      context.fillRect(ox + x*cell + 3, oy + y*cell + 3, cell - 6, 3);
+      drawCell(context, (ox + x*cell) / cell, (oy + y*cell) / cell, blockColor(type), cell);
     }));
   }
   function drawNext() { drawPreview(nctx, nextType); }
